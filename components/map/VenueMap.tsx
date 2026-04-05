@@ -28,6 +28,7 @@ const INITIAL_ZOOM = 13;
 interface VenueMapProps {
   initialVenues: Venue[];
   onVenueClick: (id: string) => void;
+  activeVenueId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -82,9 +83,8 @@ function buildPopupElement(
         ${venue.category}
       </span>
       <div class="font-bold text-sm mt-0.5">${venue.name}</div>
-      <div class="text-zinc-400 text-xs mt-1 flex justify-between">
-        <span>${venue.capacity ?? 0} pax</span>
-        <span>${venue.price_range ?? ''}</span>
+      <div class="text-zinc-400 text-xs mt-1">
+        ${venue.price_range ?? ''}
       </div>
     </div>
   `;
@@ -124,7 +124,7 @@ function buildMarkerPayload(
 // VenueMap
 // ---------------------------------------------------------------------------
 
-export function VenueMap({ initialVenues, onVenueClick }: VenueMapProps) {
+export function VenueMap({ initialVenues, onVenueClick, activeVenueId }: VenueMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const managerRef = useRef<MapManager | null>(null);
   const providerRef = useRef<MaplibreProvider | null>(null);
@@ -217,6 +217,48 @@ export function VenueMap({ initialVenues, onVenueClick }: VenueMapProps) {
       setTimeout(() => clearInterval(poll), 5000);
     }
   }, [initialVenues]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // -------------------------------------------------------------------------
+  // Effect 3 — Auto-zoom + popup when activeVenueId changes.
+  // If the target venue is in the current marker set, fly to it and open its
+  // popup. Waits for the manager via the same poll pattern as Effect 2.
+  // -------------------------------------------------------------------------
+  useEffect(() => {
+    if (!activeVenueId) return;
+
+    const target = initialVenues.find((v) => v.id === activeVenueId);
+    if (!target) return;
+
+    const tryFlyAndShow = () => {
+      const manager = managerRef.current;
+      const provider = providerRef.current;
+      if (!manager || !provider) return;
+
+      const mlMap = provider.getMap();
+
+      const flyAndShow = () => {
+        mlMap.flyTo({ center: [target.lng, target.lat], zoom: 15, duration: 1000 });
+        setTimeout(() => {
+          try { manager.showPopup(activeVenueId); } catch { /* marker may not be ready */ }
+        }, 1100); // wait for fly animation to finish
+      };
+
+      if (mlMap.loaded()) {
+        flyAndShow();
+      } else {
+        mlMap.once('load', flyAndShow);
+      }
+    };
+
+    if (managerRef.current) {
+      tryFlyAndShow();
+    } else {
+      const poll = setInterval(() => {
+        if (managerRef.current) { clearInterval(poll); tryFlyAndShow(); }
+      }, 100);
+      setTimeout(() => clearInterval(poll), 5000);
+    }
+  }, [activeVenueId, initialVenues]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div

@@ -2,9 +2,8 @@ import type { Metadata } from 'next';
 import { Space_Grotesk } from 'next/font/google';
 import './globals.css';
 
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { AppSidebar } from '@/components/app-sidebar';
+import { AppShell } from '@/components/layout/AppShell';
 import { cn } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
@@ -33,7 +32,11 @@ export const metadata: Metadata = {
 };
 
 // ---------------------------------------------------------------------------
-// Root Layout
+// Root Layout — Server Component
+//
+// AppShell (Client Component) handles sidebar visibility:
+//   - Auth routes (/login, /signup): full-screen, no sidebar
+//   - All other routes: sidebar + main layout
 // ---------------------------------------------------------------------------
 
 export default function RootLayout({
@@ -43,25 +46,13 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      // --font-space-grotesk makes Next.js inject the @font-face.
-      // Theme's font-sans utility already resolves to 'Space Grotesk, serif'
-      // via @theme inline in globals.css — so the font renders correctly.
       className={`${spaceGrotesk.variable} dark`}
     >
       <body className={cn('font-sans bg-background text-foreground antialiased')}>
         <TooltipProvider delayDuration={0}>
-          <SidebarProvider>
-            <div className="flex min-h-screen w-full">
-              <AppSidebar />
-
-              <main className="flex-1 flex flex-col overflow-hidden">
-                {/* Mobile sidebar toggle — hidden on md+ */}
-                <SidebarTrigger className="m-2 md:hidden" />
-
-                {children}
-              </main>
-            </div>
-          </SidebarProvider>
+          <AppShell>
+            {children}
+          </AppShell>
         </TooltipProvider>
       </body>
     </html>

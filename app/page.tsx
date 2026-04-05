@@ -1,11 +1,11 @@
 'use client';
 
-import { Suspense, useEffect, useState, useCallback } from 'react';
+import { Suspense, useState, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { MapHeader } from '@/components/layout/MapHeader';
 import { MapContainer } from '@/components/map/MapContainer';
 import { VenueDetailPanel } from '@/components/map/VenueDetailPanel';
-import { getVenues } from '@/actions/venues';
+import { getVenueById } from '@/actions/venues';
 import type { Venue } from '@/types';
 
 // ---------------------------------------------------------------------------
@@ -21,30 +21,33 @@ function MapSkeleton() {
 // ---------------------------------------------------------------------------
 // Home page — Client Component (Controller)
 //
-// State ownership:
-//   venues       — the full list fetched on mount (source of truth)
-//   visibleVenues — the filtered slice shown on the map; defaults to all venues
-//
 // Data flow:
-//   MapSearch → onSearch → setVisibleVenues → MapContainer → VenueMap
+//   1. venueId in URL → fetch that venue → setVisibleVenues([data])
+//      VenueMap receives the single venue and, once isMapReady fires,
+//      drops the pin safely with no race condition.
+//   2. MapSearch.onSearch → setVisibleVenues(results)
+//      Same path — marker effect re-runs after isMapReady.
 // ---------------------------------------------------------------------------
 
 export default function Home() {
   const searchParams = useSearchParams();
   const venueId = searchParams.get('venueId');
 
-  const [venues, setVenues] = useState<Venue[]>([]);
   const [visibleVenues, setVisibleVenues] = useState<Venue[]>([]);
 
-  // Fetch all venues once on mount; show all pins by default.
+  // When a deep-link venueId appears (from Bookmarks or History), fetch
+  // that venue and seed the map so its pin is ready for VenueMap to place.
+  // Runs whenever venueId changes — handles direct navigation and browser back/forward.
   useEffect(() => {
-    getVenues().then(({ data }) => {
-      if (data) {
-        setVenues(data);
-        setVisibleVenues(data);
-      }
+    if (!venueId) {
+      // No venueId — don't clear user's existing search results.
+      return;
+    }
+
+    getVenueById(venueId).then(({ data }) => {
+      if (data) setVisibleVenues([data]);
     });
-  }, []);
+  }, [venueId]);
 
   // Stable callback — won't cause VenueMap's marker effect to thrash.
   const handleSearch = useCallback((results: Venue[]) => {
@@ -59,7 +62,7 @@ export default function Home() {
       {/* Map region — relative so VenueDetailPanel (absolute) anchors here */}
       <div className="relative flex-1 min-h-0">
         <Suspense fallback={<MapSkeleton />}>
-          <MapContainer initialVenues={visibleVenues} />
+          <MapContainer initialVenues={visibleVenues} activeVenueId={venueId ?? undefined} />
         </Suspense>
 
         {venueId && <VenueDetailPanel venueId={venueId} />}

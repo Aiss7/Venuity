@@ -18,9 +18,7 @@ export async function getVenues(): Promise<ActionResult<Venue[]>> {
 
     const { data, error } = await supabase
       .from('venues')
-      .select(
-        'id, name, lat, lng, category, rating, price_range, capacity, amenities, image_url, description, address, created_at',
-      )
+      .select('id, name, lat, lng, category, rating, price_range, amenities, event_types, image_url, description, address')
       .order('rating', { ascending: false });
 
     if (error) {
@@ -53,9 +51,7 @@ export async function getVenueById(id: string): Promise<ActionResult<Venue>> {
 
     const { data, error } = await supabase
       .from('venues')
-      .select(
-        'id, name, lat, lng, category, rating, price_range, capacity, amenities, image_url, description, address, created_at',
-      )
+      .select('*, venue_rooms(*)')
       .eq('id', id)
       .single();
 

@@ -1,7 +1,28 @@
 // ---------------------------------------------------------------------------
+// VenueRoom
+// Mirrors the public.venue_rooms child table (one venue → many rooms).
+// ---------------------------------------------------------------------------
+
+export interface VenueRoom {
+  id: string;
+  venue_id: string;
+  room_name: string;
+  room_type: string | null;
+  capacity: number | null;
+  price_note: string | null;
+  suitable_for: string[] | null;
+  amenities: string[] | null;
+  event_types: string[] | null;
+  description: string | null;
+  image_urls: string[] | null;
+  is_available: boolean | null;
+}
+
+// ---------------------------------------------------------------------------
 // Venue
-// Mirrors the public.venues table in Supabase exactly.
-// price_range is constrained to: '₱' | '₱₱' | '₱₱₱' | '₱₱₱₱'
+// Mirrors the public.venues parent table exactly.
+// amenities, event_types, and description are summary/parent-level fields.
+// venue_rooms is populated when using getVenueById (joined select).
 // ---------------------------------------------------------------------------
 
 export type PriceRange = '₱' | '₱₱' | '₱₱₱' | '₱₱₱₱';
@@ -14,17 +35,18 @@ export interface Venue {
   category: string;
   rating: number | null;
   price_range: PriceRange | null;
-  capacity: number | null;
   amenities: string[] | null;
+  event_types: string[] | null;
   image_url: string | null;
   description: string | null;
   address: string | null;
   created_at: string | null;
+  // Populated by getVenueById via .select('*, venue_rooms(*)')
+  venue_rooms?: VenueRoom[];
 }
 
 // ---------------------------------------------------------------------------
-// Bookmark
-// Mirrors the public.bookmarks table in Supabase exactly.
+// Bookmark — mirrors the public.bookmarks table.
 // ---------------------------------------------------------------------------
 
 export interface Bookmark {

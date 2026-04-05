@@ -85,7 +85,7 @@ export function MapSearch({ onSearch }: MapSearchProps) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleEnter()}
-            placeholder="Search venues…"
+            placeholder="Search event venues…"
             className="pl-9 h-9 text-sm bg-muted/50 border-border/60 focus-visible:bg-background"
             aria-label="Search venues"
             aria-autocomplete="list"
