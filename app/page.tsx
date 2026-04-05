@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { MapHeader } from '@/components/layout/MapHeader';
 import { MapContainer } from '@/components/map/MapContainer';
 import { VenueDetailPanel } from '@/components/map/VenueDetailPanel';
+import { FloatingChat } from '@/components/chat/FloatingChat';
 import { getVenueById } from '@/actions/venues';
 import type { Venue } from '@/types';
 
@@ -59,13 +60,16 @@ export default function Home() {
       {/* Header with search bar — onSearch updates visibleVenues */}
       <MapHeader onSearch={handleSearch} />
 
-      {/* Map region — relative so VenueDetailPanel (absolute) anchors here */}
+      {/* Map region — relative so VenueDetailPanel and FloatingChat anchor here */}
       <div className="relative flex-1 min-h-0">
         <Suspense fallback={<MapSkeleton />}>
           <MapContainer initialVenues={visibleVenues} activeVenueId={venueId ?? undefined} />
         </Suspense>
 
         {venueId && <VenueDetailPanel venueId={venueId} />}
+
+        {/* AI assistant — anchored bottom-left of the map region */}
+        <FloatingChat />
       </div>
     </div>
   );
