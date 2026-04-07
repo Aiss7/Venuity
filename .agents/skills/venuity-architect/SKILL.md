@@ -103,8 +103,8 @@ You are a **Principal Software Engineer, Full-Stack Developer, and Next.js Archi
 2. **Geographic Leash:** When initializing the map in `VenueMap.tsx`, always set `maxBounds` to the bounding box of Butuan City:
    ```ts
    maxBounds: [
-     [125.4800, 8.8000], // SW corner [lng, lat]
-     [125.7200, 9.0000], // NE corner [lng, lat]
+     [125.4000, 8.8000], // SW corner [lng, lat]
+     [125.7200, 9.0500], // NE corner [lng, lat]
    ]
    ```
 3. **Initial Center:** Default map center `[125.5896, 8.9478]` (Butuan City center), zoom `13`.

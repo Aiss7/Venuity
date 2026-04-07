@@ -23,6 +23,8 @@ type CreateVenueReportResult = CreateVenueReportSuccess | CreateVenueReportError
 // Auth helper — builds a GoogleAuth instance from env vars (no JSON file).
 // The private key stored in .env.local uses literal "\n" which must be
 // decoded back to real newlines before the RSA key is valid.
+// Both the Docs and Drive scopes are requested so we can move the document
+// into the target shared folder after creation.
 // ---------------------------------------------------------------------------
 
 function buildAuthClient(): GoogleAuth {
@@ -42,7 +44,11 @@ function buildAuthClient(): GoogleAuth {
       client_email: clientEmail,
       private_key: privateKey,
     },
-    scopes: ['https://www.googleapis.com/auth/documents'],
+    // Drive scope required to move the document into the shared folder.
+    scopes: [
+      'https://www.googleapis.com/auth/documents',
+      'https://www.googleapis.com/auth/drive',
+    ],
   });
 }
 
@@ -51,14 +57,16 @@ function buildAuthClient(): GoogleAuth {
 // ---------------------------------------------------------------------------
 
 /**
- * Creates a new Google Doc titled after the given venue name.
+ * Creates a new Google Doc titled after the given venue name, then moves it
+ * into the shared Drive folder specified by GOOGLE_DRIVE_FOLDER_ID.
  *
  * @param venueName - The venue name used as the document title.
  * @returns { data: { documentId, url } } on success, { error } on failure.
  *
- * Note: The service account must have the Google Docs API enabled in your
- * Google Cloud project. The document is created in the service account's
- * Drive; to view it you must share it or move it to a shared folder.
+ * Note: The service account must have:
+ *   - Google Docs API enabled
+ *   - Google Drive API enabled
+ *   - Editor access on the target Drive folder (GOOGLE_DRIVE_FOLDER_ID)
  */
 export async function createVenueReport(
   venueName: string,
@@ -67,17 +75,28 @@ export async function createVenueReport(
     return { data: null, error: 'venueName must be a non-empty string.' };
   }
 
+  const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+  if (!folderId) {
+    return {
+      data: null,
+      error:
+        'Missing GOOGLE_DRIVE_FOLDER_ID. Set it in .env.local to specify the target Drive folder.',
+    };
+  }
+
   try {
     const auth = buildAuthClient();
     const docsClient = google.docs({ version: 'v1', auth });
+    const driveClient = google.drive({ version: 'v3', auth });
 
-    const response = await docsClient.documents.create({
+    // 1. Create the document via the Docs API.
+    const createResponse = await docsClient.documents.create({
       requestBody: {
         title: `Venue Report — ${venueName.trim()}`,
       },
     });
 
-    const documentId = response.data.documentId;
+    const documentId = createResponse.data.documentId;
 
     if (!documentId) {
       return {
@@ -85,6 +104,23 @@ export async function createVenueReport(
         error: 'Google Docs API returned a document without an ID.',
       };
     }
+
+    // 2. Move the document into the target folder using the Drive API.
+    //    We must supply the current parent(s) in `removeParents` so Drive
+    //    replaces rather than adds the new parent.
+    const metaResponse = await driveClient.files.get({
+      fileId: documentId,
+      fields: 'parents',
+    });
+
+    const previousParents = (metaResponse.data.parents ?? []).join(',');
+
+    await driveClient.files.update({
+      fileId: documentId,
+      addParents: folderId,
+      removeParents: previousParents,
+      fields: 'id, parents',
+    });
 
     return {
       data: {
@@ -97,7 +133,7 @@ export async function createVenueReport(
     const message =
       err instanceof Error ? err.message : 'An unexpected error occurred.';
 
-    console.error('[createVenueReport] Google Docs API error:', message);
+    console.error('[createVenueReport] Google API error:', message);
 
     return { data: null, error: message };
   }
