@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { login } from '@/actions/auth';
 
+export const dynamic = 'force-dynamic';
+
 // ---------------------------------------------------------------------------
 // Login page — login-04 split-panel layout
 // Left: brand panel (hidden on mobile)

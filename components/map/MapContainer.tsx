@@ -13,9 +13,10 @@ import type { Venue } from '@/types';
 interface MapContainerProps {
   initialVenues: Venue[];
   activeVenueId?: string;
+  fitBoundsVenues?: Venue[];
 }
 
-export function MapContainer({ initialVenues, activeVenueId }: MapContainerProps) {
+export function MapContainer({ initialVenues, activeVenueId, fitBoundsVenues }: MapContainerProps) {
   const router = useRouter();
 
   function handleVenueClick(id: string) {
@@ -27,6 +28,7 @@ export function MapContainer({ initialVenues, activeVenueId }: MapContainerProps
       initialVenues={initialVenues}
       onVenueClick={handleVenueClick}
       activeVenueId={activeVenueId}
+      fitBoundsVenues={fitBoundsVenues}
     />
   );
 }

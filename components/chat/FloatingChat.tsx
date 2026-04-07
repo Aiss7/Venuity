@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import ReactMarkdown from 'react-markdown';
 
 // ---------------------------------------------------------------------------
@@ -20,14 +21,32 @@ import ReactMarkdown from 'react-markdown';
 //   - sendMessage({ role, parts }) replaces handleSubmit
 //   - status: 'submitted' | 'streaming' | 'ready' | 'error' replaces isLoading
 //   - messages[n].parts (UIMessagePart[]) replaces messages[n].content string
+//   - onToolCall fires synchronously when the AI emits a tool-call part
 // ---------------------------------------------------------------------------
 
-export function FloatingChat() {
+interface FloatingChatProps {
+  /** Called when the AI recommends venues and calls showVenuesOnMap. */
+  onShowVenues?: (venues: any[]) => void;
+}
+
+export function FloatingChat({ onShowVenues }: FloatingChatProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [inputValue, setInputValue] = React.useState('');
 
+  // Stable ref so onToolCall closure never goes stale.
+  const onShowVenuesRef = React.useRef(onShowVenues);
+  onShowVenuesRef.current = onShowVenues;
+
   const { messages, sendMessage, status } = useChat({
     transport: new DefaultChatTransport({ api: '/api/chat' }),
+    onToolCall({ toolCall }) {
+      if (toolCall.toolName === 'showVenuesOnMap') {
+        const input = toolCall.input as { venues: any[] };
+        if (onShowVenuesRef.current) {
+          onShowVenuesRef.current(input.venues);
+        }
+      }
+    },
   });
 
   const isLoading = status === 'submitted' || status === 'streaming';
@@ -151,6 +170,21 @@ export function FloatingChat() {
                           >
                             {text}
                           </ReactMarkdown>
+                          {msg.parts?.map((part, idx) => {
+                            if (part.type === 'tool-invocation' && 'toolName' in part && part.toolName === 'showVenuesOnMap') {
+                              const venues = (part as any).args?.venues || [];
+                              if (venues.length > 0) {
+                                return (
+                                  <div key={idx} className="mt-2">
+                                    <Badge variant="secondary" className="gap-1 shadow-sm font-medium">
+                                      📍 Showing {venues.length} {venues.length === 1 ? 'venue' : 'venues'} on map
+                                    </Badge>
+                                  </div>
+                                );
+                              }
+                            }
+                            return null;
+                          })}
                         </div>
                       ) : (
                         text

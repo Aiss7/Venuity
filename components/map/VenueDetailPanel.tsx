@@ -10,6 +10,7 @@ import {
   BookmarkCheck,
   Users,
   Banknote,
+  Navigation,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -18,7 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Card } from '@/components/ui/card';
 import { getVenueById } from '@/actions/venues';
-import { toggleBookmark } from '@/actions/bookmarks';
+import { toggleBookmark, checkIfBookmarked } from '@/actions/bookmarks';
 import { saveToHistory } from '@/lib/history';
 import type { Venue, VenueRoom } from '@/types';
 
@@ -155,10 +156,15 @@ export function VenueDetailPanel({ venueId }: VenueDetailPanelProps) {
     setVenue(null);
     setIsBookmarked(false);
 
-    getVenueById(venueId).then(({ data }) => {
+    // Fetch venue data and bookmark status in parallel.
+    Promise.all([
+      getVenueById(venueId),
+      checkIfBookmarked(venueId),
+    ]).then(([{ data }, bookmarked]) => {
       if (!cancelled) {
         setVenue(data);
         setLoading(false);
+        setIsBookmarked(bookmarked);
         if (data) saveToHistory(data);
       }
     });
@@ -207,7 +213,7 @@ export function VenueDetailPanel({ venueId }: VenueDetailPanelProps) {
           </div>
         )}
         <button
-          onClick={() => router.push('/')}
+          onClick={() => router.back()}
           aria-label="Close venue panel"
           className="absolute top-3 right-3 rounded-full p-1.5 bg-background/80 backdrop-blur text-foreground hover:bg-background transition-colors shadow-md"
         >
@@ -300,27 +306,44 @@ export function VenueDetailPanel({ venueId }: VenueDetailPanelProps) {
         </div>
       </ScrollArea>
 
-      {/* ── Sticky footer — bookmark ─────────────────────────────────────── */}
+      {/* ── Sticky footer — actions ───────────────────────────────────────── */}
       <div className="p-4 border-t border-sidebar-border bg-sidebar shrink-0">
-        <Button
-          className="w-full"
-          size="lg"
-          variant={isBookmarked ? 'secondary' : 'default'}
-          onClick={handleBookmark}
-          disabled={bookmarkPending}
-        >
-          {isBookmarked ? (
-            <>
-              <BookmarkCheck size={18} className="mr-2" />
-              Bookmarked
-            </>
-          ) : (
-            <>
-              <Bookmark size={18} className="mr-2" />
-              Bookmark Venue
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+
+          {/* Get Directions — opens Google Maps / native Maps app */}
+          <a
+            href={`https://www.google.com/maps/dir/?api=1&destination=${venue.lat},${venue.lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Get directions"
+            className="flex items-center justify-center w-11 h-11 rounded-md bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground transition-colors shadow-sm shrink-0"
+          >
+            <Navigation size={18} />
+          </a>
+
+          {/* Bookmark */}
+          <Button
+            className="flex-1"
+            size="lg"
+            variant={isBookmarked ? 'secondary' : 'default'}
+            onClick={handleBookmark}
+            disabled={bookmarkPending}
+          >
+            {isBookmarked ? (
+              <>
+                <BookmarkCheck size={18} className="mr-2" />
+                Bookmarked
+              </>
+            ) : (
+              <>
+                <Bookmark size={18} className="mr-2" />
+                Bookmark Venue
+              </>
+            )}
+          </Button>
+
+        </div>
       </div>
     </aside>
   );

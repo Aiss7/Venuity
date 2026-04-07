@@ -4,6 +4,8 @@ import { getUserBookmarks } from '@/actions/bookmarks';
 import { VenueBentoCard } from '@/components/bookmarks/VenueBentoCard';
 import { Bookmark } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 // ---------------------------------------------------------------------------
 // Bookmarks page — Server Component
 // Redirects to /login if no session. Renders a bento grid of bookmarked venues.
@@ -40,7 +42,7 @@ export default async function BookmarksPage() {
           <Bookmark size={40} className="text-muted-foreground/30" />
           <p className="text-sm font-medium text-foreground">No bookmarks yet</p>
           <p className="text-xs text-muted-foreground max-w-xs">
-            Search for venues on the map and hit &ldquo;Bookmark Venue&rdquo; to save them here.
+            Search for event venues on the map and hit &ldquo;Bookmark Venue&rdquo; to save them here.
           </p>
         </div>
       ) : (

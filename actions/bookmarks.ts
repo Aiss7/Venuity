@@ -101,3 +101,29 @@ export async function toggleBookmark(venueId: string): Promise<
 
   return { success: true, isBookmarked: true };
 }
+
+// ---------------------------------------------------------------------------
+// checkIfBookmarked
+// Returns whether the currently authenticated user has bookmarked a venue.
+// Safe to call for unauthenticated users — returns false, no error.
+// ---------------------------------------------------------------------------
+
+export async function checkIfBookmarked(venueId: string): Promise<boolean> {
+  const supabase = await createServerSupabaseClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return false;
+
+  const { data } = await supabase
+    .from('bookmarks')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('venue_id', venueId)
+    .maybeSingle();
+
+  return !!data;
+}
+

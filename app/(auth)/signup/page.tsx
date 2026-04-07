@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { signup } from '@/actions/auth';
 
+export const dynamic = 'force-dynamic';
+
 // ---------------------------------------------------------------------------
 // Signup page — signup-04 split-panel layout
 // Left: brand panel (hidden on mobile)

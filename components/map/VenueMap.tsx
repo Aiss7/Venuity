@@ -1,23 +1,34 @@
 'use client';
 
+/**
+ * VenueMap.tsx
+ *
+ * Pure map orchestration: initialises Arenarium + MapLibre, manages marker
+ * updates, fly-to, and fit-bounds via four focused effects.
+ *
+ * All DOM construction and styling lives in ./venueMarkers.ts.
+ */
+
 import { useEffect, useRef } from 'react';
-import { Map, Marker } from 'maplibre-gl';
+import { Map, Marker, LngLatBounds, NavigationControl } from 'maplibre-gl';
 import {
   MaplibreProvider,
   MaplibreDarkStyle,
 } from '@arenarium/maps-integration-maplibre';
 import { MapManager } from '@arenarium/maps';
 import 'maplibre-gl/dist/maplibre-gl.css';
+
+import { injectMarkerCSS, buildMarkerPayload } from './venueMarkers';
 import type { Venue } from '@/types';
 
 // ---------------------------------------------------------------------------
-// Butuan City geographic leash — skill directive §Mapping Integration Rules
+// Geographic leash — Butuan City   (skill directive §Mapping Integration Rules)
 // ---------------------------------------------------------------------------
+
 const BUTUAN_BOUNDS: [[number, number], [number, number]] = [
   [125.4000, 8.8000], // SW [lng, lat]
   [125.7200, 9.0500], // NE [lng, lat]
 ];
-
 const BUTUAN_CENTER: [number, number] = [125.5350, 8.9475];
 const INITIAL_ZOOM = 13;
 
@@ -26,240 +37,161 @@ const INITIAL_ZOOM = 13;
 // ---------------------------------------------------------------------------
 
 interface VenueMapProps {
-  initialVenues: Venue[];
-  onVenueClick: (id: string) => void;
-  activeVenueId?: string;
-}
-
-// ---------------------------------------------------------------------------
-// DOM element builders — imperative API required by @arenarium/maps
-// ---------------------------------------------------------------------------
-
-function buildPinElement(): HTMLElement {
-  const el = document.createElement('div');
-  el.style.cssText = `
-    width: 16px;
-    height: 16px;
-    background: hsl(var(--primary));
-    border-radius: 50%;
-    border: 2px solid hsl(var(--background));
-    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
-    flex-shrink: 0;
-  `;
-  return el;
-}
-
-function buildTooltipElement(venue: Venue): HTMLElement {
-  const el = document.createElement('div');
-  el.className =
-    'flex items-center gap-2 bg-zinc-950 text-white px-3 py-1.5 rounded-lg shadow-lg border border-zinc-800';
-  el.innerHTML = `
-    <span class="font-medium text-xs">${venue.name}</span>
-    <span class="bg-primary/20 text-primary text-xs px-1.5 py-0.5 rounded-md font-bold">
-      ${venue.rating ?? '—'}
-    </span>
-  `;
-  return el;
-}
-
-function buildPopupElement(
-  venue: Venue,
-  onVenueClick: (id: string) => void,
-): HTMLElement {
-  const el = document.createElement('div');
-  el.className =
-    'flex flex-col bg-zinc-950 text-white rounded-xl shadow-2xl border border-zinc-800 overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary transition-all';
-  el.innerHTML = `
-    <div class="p-2">
-      <img
-        src="${venue.image_url ?? ''}"
-        alt="${venue.name}"
-        class="w-full h-28 object-cover rounded-lg"
-        onerror="this.style.display='none'"
-      />
-    </div>
-    <div class="p-3">
-      <span class="text-xs font-bold text-primary uppercase tracking-wider">
-        ${venue.category}
-      </span>
-      <div class="font-bold text-sm mt-0.5">${venue.name}</div>
-      <div class="text-zinc-400 text-xs mt-1">
-        ${venue.price_range ?? ''}
-      </div>
-    </div>
-  `;
-  el.addEventListener('click', () => onVenueClick(venue.id));
-  return el;
-}
-
-// ---------------------------------------------------------------------------
-// buildMarkerPayload — shared helper used by both effects
-// ---------------------------------------------------------------------------
-
-function buildMarkerPayload(
-  venues: Venue[],
-  onVenueClick: (id: string) => void,
-) {
-  return venues.map((venue, index) => ({
-    id: venue.id,
-    rank: index,
-    lat: venue.lat,
-    lng: venue.lng,
-    tooltip: {
-      element: buildTooltipElement(venue),
-      dimensions: { width: 140, height: 32, padding: 4 },
-    },
-    pin: {
-      element: buildPinElement(),
-      dimensions: { radius: 8, stroke: 2 },
-    },
-    popup: {
-      element: buildPopupElement(venue, onVenueClick),
-      dimensions: { width: 220, height: 200, padding: 8 },
-    },
-  }));
+  initialVenues:    Venue[];
+  onVenueClick:     (id: string) => void;
+  activeVenueId?:   string;
+  /** When set, the viewport fits to show all these venues. */
+  fitBoundsVenues?: Venue[];
 }
 
 // ---------------------------------------------------------------------------
 // VenueMap
 // ---------------------------------------------------------------------------
 
-export function VenueMap({ initialVenues, onVenueClick, activeVenueId }: VenueMapProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const managerRef = useRef<MapManager | null>(null);
-  const providerRef = useRef<MaplibreProvider | null>(null);
-  // Keep onVenueClick stable in a ref so the marker effect doesn't re-fire
-  // every time the parent re-renders with a new function reference.
+export function VenueMap({
+  initialVenues,
+  onVenueClick,
+  activeVenueId,
+  fitBoundsVenues,
+}: VenueMapProps) {
+  const containerRef    = useRef<HTMLDivElement>(null);
+  const managerRef      = useRef<MapManager | null>(null);
+  const providerRef     = useRef<MaplibreProvider | null>(null);
+  // Stable ref — prevents the marker effect from re-firing on every parent re-render.
   const onVenueClickRef = useRef(onVenueClick);
   onVenueClickRef.current = onVenueClick;
 
-  // -------------------------------------------------------------------------
-  // Effect 1 — Map initialisation (runs once on mount).
-  // Creates the MaplibreProvider + MapManager and stores both in refs.
-  // -------------------------------------------------------------------------
+  // ── Effect 1: Map init (once on mount) ────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const apiKey = process.env.NEXT_PUBLIC_ARENARIUM_TOKEN ?? '';
+    injectMarkerCSS();
 
     const provider = new MaplibreProvider(Map, Marker, {
       container: containerRef.current,
-      style: MaplibreDarkStyle,
-      center: BUTUAN_CENTER,
-      zoom: INITIAL_ZOOM,
+      style:     MaplibreDarkStyle,
+      center:    BUTUAN_CENTER,
+      zoom:      INITIAL_ZOOM,
       maxBounds: BUTUAN_BOUNDS,
     });
     providerRef.current = provider;
 
-    MapManager.create(apiKey, provider).then((manager) => {
-      managerRef.current = manager;
-    });
+    // Zoom controls (+ / −) top-left; compass hidden via CSS in venueMarkers.ts
+    provider.getMap().addControl(
+      new NavigationControl({ showCompass: false }),
+      'top-left',
+    );
 
-    // Cleanup — skill directive §Mapping Integration Rules
+    MapManager.create(process.env.NEXT_PUBLIC_ARENARIUM_TOKEN ?? '', provider)
+      .then((manager) => { managerRef.current = manager; });
+
     return () => {
       provider.getMap().remove();
-      managerRef.current = null;
+      managerRef.current  = null;
       providerRef.current = null;
     };
-  }, []); // Intentionally empty — map is initialised once.
+  }, []);
 
-  // -------------------------------------------------------------------------
-  // Effect 2 — Marker updates (runs whenever initialVenues changes).
-  // Calls manager.updateMarkers() on the existing manager instance.
-  // Waits for the map's 'load' event if the map isn't ready yet.
-  // -------------------------------------------------------------------------
+  // ── Effect 2: Marker updates ───────────────────────────────────────────────
   useEffect(() => {
     if (initialVenues.length === 0) return;
 
-    const payload = buildMarkerPayload(initialVenues, (id) =>
-      onVenueClickRef.current(id),
+    const payload = buildMarkerPayload(
+      initialVenues,
+      (id) => onVenueClickRef.current(id),
     );
 
-    const pushMarkers = async (manager: MapManager) => {
+    const push = async (manager: MapManager, provider: MaplibreProvider) => {
+      const mlMap = provider.getMap();
+      if (!mlMap.isStyleLoaded()) {
+        mlMap.once('styledata', () => push(manager, provider));
+        return;
+      }
       try {
         await manager.removeMarkers();
         await manager.updateMarkers(payload);
-
-        // Auto-open popup when the search selected exactly one venue.
-        if (initialVenues.length === 1) {
-          manager.showPopup(initialVenues[0].id);
-        }
+        if (initialVenues.length === 1) manager.showPopup(initialVenues[0].id);
       } catch (err) {
-        console.error('[VenueMap] Failed to update markers:', err);
+        console.warn('[VenueMap] Marker update failed:', err);
       }
     };
 
     const tryPush = () => {
-      const manager = managerRef.current;
-      const provider = providerRef.current;
-      if (!manager || !provider) return;
-
-      const mlMap = provider.getMap();
-      if (mlMap.loaded()) {
-        pushMarkers(manager);
-      } else {
-        mlMap.once('load', () => pushMarkers(manager));
-      }
+      const m = managerRef.current;
+      const p = providerRef.current;
+      if (m && p) push(m, p);
     };
 
-    // Manager may not exist yet on the very first render (map still
-    // initialising). Poll briefly — the map auth handshake is <500ms.
     if (managerRef.current) {
       tryPush();
     } else {
       const poll = setInterval(() => {
-        if (managerRef.current) {
-          clearInterval(poll);
-          tryPush();
-        }
+        if (managerRef.current) { clearInterval(poll); tryPush(); }
       }, 100);
-      // Give up after 5s to avoid memory leaks.
       setTimeout(() => clearInterval(poll), 5000);
     }
   }, [initialVenues]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // -------------------------------------------------------------------------
-  // Effect 3 — Auto-zoom + popup when activeVenueId changes.
-  // If the target venue is in the current marker set, fly to it and open its
-  // popup. Waits for the manager via the same poll pattern as Effect 2.
-  // -------------------------------------------------------------------------
+  // ── Effect 3: Fly-to + open popup on activeVenueId ───────────────────────
   useEffect(() => {
     if (!activeVenueId) return;
-
     const target = initialVenues.find((v) => v.id === activeVenueId);
     if (!target) return;
 
-    const tryFlyAndShow = () => {
-      const manager = managerRef.current;
-      const provider = providerRef.current;
-      if (!manager || !provider) return;
-
+    const flyAndShow = (manager: MapManager, provider: MaplibreProvider) => {
       const mlMap = provider.getMap();
-
-      const flyAndShow = () => {
-        mlMap.flyTo({ center: [target.lng, target.lat], zoom: 15, duration: 1000 });
-        setTimeout(() => {
-          try { manager.showPopup(activeVenueId); } catch { /* marker may not be ready */ }
-        }, 1100); // wait for fly animation to finish
-      };
-
-      if (mlMap.loaded()) {
-        flyAndShow();
-      } else {
-        mlMap.once('load', flyAndShow);
+      if (!mlMap.isStyleLoaded()) {
+        mlMap.once('styledata', () => flyAndShow(manager, provider));
+        return;
       }
+      mlMap.flyTo({ center: [target.lng, target.lat], zoom: 15, duration: 1000 });
+      setTimeout(() => {
+        try { manager.showPopup(activeVenueId); } catch { /* marker may not be placed yet */ }
+      }, 1100);
+    };
+
+    const tryFly = () => {
+      const m = managerRef.current;
+      const p = providerRef.current;
+      if (m && p) flyAndShow(m, p);
     };
 
     if (managerRef.current) {
-      tryFlyAndShow();
+      tryFly();
     } else {
       const poll = setInterval(() => {
-        if (managerRef.current) { clearInterval(poll); tryFlyAndShow(); }
+        if (managerRef.current) { clearInterval(poll); tryFly(); }
       }, 100);
       setTimeout(() => clearInterval(poll), 5000);
     }
   }, [activeVenueId, initialVenues]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Effect 4: fitBounds for AI multi-venue results ────────────────────────
+  useEffect(() => {
+    if (!fitBoundsVenues || fitBoundsVenues.length === 0) return;
+
+    const fit = (provider: MaplibreProvider) => {
+      const mlMap = provider.getMap();
+      if (!mlMap.isStyleLoaded()) {
+        mlMap.once('styledata', () => fit(provider));
+        return;
+      }
+      const bounds = new LngLatBounds();
+      fitBoundsVenues.forEach((v) => bounds.extend([v.lng, v.lat]));
+      mlMap.fitBounds(bounds, { padding: 80, maxZoom: 15, duration: 800 });
+    };
+
+    if (providerRef.current) {
+      fit(providerRef.current);
+    } else {
+      const poll = setInterval(() => {
+        if (providerRef.current) { clearInterval(poll); fit(providerRef.current!); }
+      }, 100);
+      setTimeout(() => clearInterval(poll), 5000);
+    }
+  }, [fitBoundsVenues]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div
       ref={containerRef}

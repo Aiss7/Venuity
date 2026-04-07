@@ -26,7 +26,7 @@ const spaceGrotesk = Space_Grotesk({
 // ---------------------------------------------------------------------------
 
 export const metadata: Metadata = {
-  title: 'Venuity — Discover Venues in Butuan City',
+  title: 'Venuity — Discover Event Venues in Butuan City',
   description:
     'Find and explore event venues in Butuan City with an interactive map and AI-powered recommendations.',
 };
@@ -48,7 +48,7 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${spaceGrotesk.variable} dark`}
     >
-      <body className={cn('font-sans bg-background text-foreground antialiased')}>
+      <body className={cn('font-sans bg-background text-foreground antialiased')} suppressHydrationWarning>
         <TooltipProvider delayDuration={0}>
           <AppShell>
             {children}
