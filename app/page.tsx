@@ -31,7 +31,13 @@ function MapSkeleton() {
 //      Same path — marker effect re-runs after isMapReady.
 // ---------------------------------------------------------------------------
 
-export default function Home() {
+// ---------------------------------------------------------------------------
+// HomeContent — contains useSearchParams() so it MUST be rendered inside
+// a <Suspense> boundary by the parent. Next.js static pre-rendering requires
+// this wrapper pattern for any component that reads search params.
+// ---------------------------------------------------------------------------
+
+function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const venueId = searchParams.get('venueId');
@@ -127,3 +133,18 @@ export default function Home() {
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Home — default export. A thin shell whose only job is to wrap HomeContent
+// in a Suspense boundary so Next.js can safely prerender this route without
+// blocking on useSearchParams().
+// ---------------------------------------------------------------------------
+
+export default function Home() {
+  return (
+    <Suspense fallback={<MapSkeleton />}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
