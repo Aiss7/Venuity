@@ -112,7 +112,18 @@ export function VenueMap({
         await manager.updateMarkers(payload);
         if (initialVenues.length === 1) manager.showPopup(initialVenues[0].id);
       } catch (err) {
-        console.warn('[VenueMap] Marker update failed:', err);
+        const msg = err instanceof Error ? err.message : String(err);
+        if (msg.toLowerCase().includes('invalid domain')) {
+          // The Arenarium token is domain-locked. Add the current hostname
+          // to the allowed list at https://app.arenarium.com → API Keys.
+          console.error(
+            `[VenueMap] Arenarium token domain restriction:\n` +
+            `  Current hostname: "${window.location.hostname}"\n` +
+            `  Fix: add this domain to your token's allowlist at https://app.arenarium.com`,
+          );
+        } else {
+          console.warn('[VenueMap] Marker update failed:', err);
+        }
       }
     };
 
