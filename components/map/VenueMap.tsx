@@ -37,9 +37,9 @@ const INITIAL_ZOOM = 13;
 // ---------------------------------------------------------------------------
 
 interface VenueMapProps {
-  initialVenues:    Venue[];
-  onVenueClick:     (id: string) => void;
-  activeVenueId?:   string;
+  initialVenues: Venue[];
+  onVenueClick: (id: string) => void;
+  activeVenueId?: string;
   /** When set, the viewport fits to show all these venues. */
   fitBoundsVenues?: Venue[];
 }
@@ -54,9 +54,9 @@ export function VenueMap({
   activeVenueId,
   fitBoundsVenues,
 }: VenueMapProps) {
-  const containerRef    = useRef<HTMLDivElement>(null);
-  const managerRef      = useRef<MapManager | null>(null);
-  const providerRef     = useRef<MaplibreProvider | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const managerRef = useRef<MapManager | null>(null);
+  const providerRef = useRef<MaplibreProvider | null>(null);
   // Stable ref — prevents the marker effect from re-firing on every parent re-render.
   const onVenueClickRef = useRef(onVenueClick);
   onVenueClickRef.current = onVenueClick;
@@ -69,9 +69,9 @@ export function VenueMap({
 
     const provider = new MaplibreProvider(Map, Marker, {
       container: containerRef.current,
-      style:     MaplibreDarkStyle,
-      center:    BUTUAN_CENTER,
-      zoom:      INITIAL_ZOOM,
+      style: MaplibreDarkStyle,
+      center: BUTUAN_CENTER,
+      zoom: INITIAL_ZOOM,
       maxBounds: BUTUAN_BOUNDS,
     });
     providerRef.current = provider;
@@ -87,7 +87,7 @@ export function VenueMap({
 
     return () => {
       provider.getMap().remove();
-      managerRef.current  = null;
+      managerRef.current = null;
       providerRef.current = null;
     };
   }, []);
@@ -112,18 +112,7 @@ export function VenueMap({
         await manager.updateMarkers(payload);
         if (initialVenues.length === 1) manager.showPopup(initialVenues[0].id);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        if (msg.toLowerCase().includes('invalid domain')) {
-          // The Arenarium token is domain-locked. Add the current hostname
-          // to the allowed list at https://app.arenarium.com → API Keys.
-          console.error(
-            `[VenueMap] Arenarium token domain restriction:\n` +
-            `  Current hostname: "${window.location.hostname}"\n` +
-            `  Fix: add this domain to your token's allowlist at https://app.arenarium.com`,
-          );
-        } else {
-          console.warn('[VenueMap] Marker update failed:', err);
-        }
+        console.warn('[VenueMap] Marker update failed:', err);
       }
     };
 
