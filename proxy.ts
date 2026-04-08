@@ -14,7 +14,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  *   (so the browser persists the token for the next request).
  * - No route protection here — that belongs in individual layouts or a DAL.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   // Clone the request so we can mutate its headers for downstream use.
   let supabaseResponse = NextResponse.next({
     request,
