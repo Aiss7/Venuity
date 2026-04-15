@@ -201,3 +201,33 @@
     letter-spacing: var(--tracking-normal);
   }
 }
+
+/* ── MapLibre control contrast overrides (dark mode) ──────────────────────
+   The bundled MapLibre sprite uses black SVG icons on a light background.
+   These rules restyle the control group for our dark map theme.
+   ─────────────────────────────────────────────────────────────────────── */
+.maplibregl-ctrl-group {
+  background-color: #18181b !important; /* zinc-900 */
+  border: 1px solid #3f3f46 !important; /* zinc-700 */
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+
+.maplibregl-ctrl-group button {
+  background-color: #18181b !important;
+  width: 36px !important;
+  height: 36px !important;
+}
+
+.maplibregl-ctrl-group button:hover {
+  background-color: #27272a !important; /* zinc-800 */
+}
+
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid #3f3f46 !important; /* zinc-700 divider */
+}
+
+/* Invert the black SVG icons to pure white */
+.maplibregl-ctrl-icon {
+  filter: invert(1) brightness(2) !important;
+}

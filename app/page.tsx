@@ -44,6 +44,8 @@ function HomeContent() {
 
   const [visibleVenues, setVisibleVenues] = useState<Venue[]>([]);
   const [fitBoundsVenues, setFitBoundsVenues] = useState<Venue[]>();
+  /** Destination passed to MapContainer to trigger native routing. */
+  const [routeTarget, setRouteTarget] = useState<{ lat: number; lng: number } | null>(null);
 
   // When a deep-link venueId appears (from Bookmarks or History), fetch
   // that venue and seed the map so its pin is ready for VenueMap to place.
@@ -66,6 +68,12 @@ function HomeContent() {
   const handleSearch = useCallback((results: Venue[]) => {
     setVisibleVenues(results);
     setFitBoundsVenues(undefined);
+    setRouteTarget(null); // clear any active route when the user searches
+  }, []);
+
+  /** Called by VenueDetailPanel's "Get Directions" button. */
+  const handleGetDirections = useCallback((lat: number, lng: number) => {
+    setRouteTarget({ lat, lng });
   }, []);
 
   // Called by FloatingChat when the AI fires the showVenuesOnMap tool.
@@ -121,11 +129,17 @@ function HomeContent() {
           <MapContainer 
             initialVenues={visibleVenues} 
             activeVenueId={venueId ?? undefined} 
-            fitBoundsVenues={fitBoundsVenues} 
+            fitBoundsVenues={fitBoundsVenues}
+            routeTarget={routeTarget}
           />
         </Suspense>
 
-        {venueId && <VenueDetailPanel venueId={venueId} />}
+        {venueId && (
+          <VenueDetailPanel
+            venueId={venueId}
+            onGetDirections={handleGetDirections}
+          />
+        )}
 
         {/* AI assistant — anchored bottom-left of the map region */}
         <FloatingChat onShowVenues={handleShowVenues} />

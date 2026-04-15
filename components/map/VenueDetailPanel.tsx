@@ -29,6 +29,8 @@ import type { Venue, VenueRoom } from '@/types';
 
 interface VenueDetailPanelProps {
   venueId: string;
+  /** Called when the user clicks "Get Directions" — triggers native routing. */
+  onGetDirections: (lat: number, lng: number) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -141,7 +143,7 @@ function RoomCard({ room }: { room: VenueRoom }) {
 // Main component
 // ---------------------------------------------------------------------------
 
-export function VenueDetailPanel({ venueId }: VenueDetailPanelProps) {
+export function VenueDetailPanel({ venueId, onGetDirections }: VenueDetailPanelProps) {
   const router   = useRouter();
   const pathname = usePathname();
 
@@ -310,17 +312,17 @@ export function VenueDetailPanel({ venueId }: VenueDetailPanelProps) {
       <div className="p-4 border-t border-sidebar-border bg-sidebar shrink-0">
         <div className="flex items-center gap-2">
 
-          {/* Get Directions — opens Google Maps / native Maps app */}
-          <a
-            href={`https://www.google.com/maps/dir/?api=1&destination=${venue.lat},${venue.lng}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
+          {/* Get Directions — triggers native in-map routing */}
+          <button
+            onClick={() => {
+              if (venue) onGetDirections(venue.lat, venue.lng);
+            }}
             aria-label="Get directions"
+            title="Get directions"
             className="flex items-center justify-center w-11 h-11 rounded-md bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground transition-colors shadow-sm shrink-0"
           >
             <Navigation size={18} />
-          </a>
+          </button>
 
           {/* Bookmark */}
           <Button
