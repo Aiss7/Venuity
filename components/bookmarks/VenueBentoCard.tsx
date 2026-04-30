@@ -58,16 +58,16 @@ export function VenueBentoCard({ venue, index }: VenueBentoCardProps) {
           {venue.category}
         </Badge>
 
-        <a
-          href={`https://www.google.com/maps/dir/?api=1&destination=${venue.lat},${venue.lng}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(`/?venueId=${venue.id}&route=true`);
+          }}
           aria-label={`Get directions to ${venue.name}`}
           className="flex items-center justify-center w-7 h-7 rounded-full bg-black/60 backdrop-blur-sm text-white hover:bg-primary hover:text-primary-foreground transition-colors shadow-md shrink-0"
         >
           <Navigation size={13} />
-        </a>
+        </button>
       </div>
 
       {/* ── Bottom: name + rating + price_range ──────────────────────────── */}
