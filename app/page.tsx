@@ -60,9 +60,17 @@ function HomeContent() {
       if (data) {
         setVisibleVenues([data]);
         setFitBoundsVenues(undefined);
+        
+        if (searchParams.get('route') === 'true') {
+          setRouteTarget({ lat: data.lat, lng: data.lng });
+          // Clean up the URL so it doesn't re-trigger on refresh
+          const url = new URL(window.location.href);
+          url.searchParams.delete('route');
+          window.history.replaceState(null, '', url.pathname + url.search);
+        }
       }
     });
-  }, [venueId]);
+  }, [venueId, searchParams]);
 
   // Stable callback — won't cause VenueMap's marker effect to thrash.
   const handleSearch = useCallback((results: Venue[]) => {

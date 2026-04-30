@@ -161,11 +161,11 @@ export function FloatingChat({ onShowVenues }: FloatingChatProps) {
                         <div className="text-sm space-y-3">
                           <ReactMarkdown
                             components={{
-                              p: ({node, ...props}) => <p className="leading-relaxed" {...props} />,
-                              strong: ({node, ...props}) => <strong className="font-semibold text-foreground" {...props} />,
-                              ul: ({node, ...props}) => <ul className="list-disc pl-5 space-y-1" {...props} />,
-                              li: ({node, ...props}) => <li className="leading-relaxed" {...props} />,
-                              h3: ({node, ...props}) => <h3 className="text-base font-semibold mt-2 mb-1" {...props} />,
+                              p: ({ node, ...props }) => <p className="leading-relaxed" {...props} />,
+                              strong: ({ node, ...props }) => <strong className="font-semibold text-foreground" {...props} />,
+                              ul: ({ node, ...props }) => <ul className="list-disc pl-5 space-y-1" {...props} />,
+                              li: ({ node, ...props }) => <li className="leading-relaxed" {...props} />,
+                              h3: ({ node, ...props }) => <h3 className="text-base font-semibold mt-2 mb-1" {...props} />,
                             }}
                           >
                             {text}
